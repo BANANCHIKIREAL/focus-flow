@@ -1,5 +1,5 @@
 import { Pause, Play, RotateCcw } from "lucide-react";
-import { useTimer, type TimerMode, type TimerDurations } from "@/hooks/useTimer";
+import { useTimer, type TimerDurations } from "@/hooks/useTimer";
 
 function format(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
@@ -8,44 +8,38 @@ function format(s: number) {
 }
 
 export function Timer({ durations }: { durations: TimerDurations }) {
-  const { mode, remaining, running, total, start, pause, reset, switchMode } = useTimer(durations);
+  const { remaining, running, total, start, pause, reset } = useTimer(durations);
   const progress = total > 0 ? 1 - remaining / total : 0;
-  const size = 360;
+
+  // viewBox-based responsive sizing; padding inside viewBox keeps neon glow visible
+  const VB = 400;
   const stroke = 3;
-  const r = size / 2 - stroke * 2;
+  const pad = 18; // space for drop-shadow glow
+  const r = VB / 2 - stroke / 2 - pad;
   const c = 2 * Math.PI * r;
 
   return (
-    <div className="flex flex-col items-center gap-8 select-none">
-      <div className="flex gap-1 p-1 rounded-full glass">
-        {(["focus", "break"] as TimerMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => switchMode(m)}
-            className={`px-5 py-1.5 text-sm rounded-full transition-colors capitalize ${
-              mode === m
-                ? "bg-foreground/90 text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {m}
-          </button>
-        ))}
+    <div className="flex flex-col items-center gap-8 select-none w-full">
+      <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+        Deep focus
       </div>
 
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90">
+      <div className="relative w-[min(78vw,360px)] aspect-square">
+        <svg
+          viewBox={`0 0 ${VB} ${VB}`}
+          className="w-full h-full -rotate-90 overflow-visible"
+        >
           <circle
-            cx={size / 2}
-            cy={size / 2}
+            cx={VB / 2}
+            cy={VB / 2}
             r={r}
             fill="none"
             stroke="oklch(1 0 0 / 0.08)"
             strokeWidth={stroke}
           />
           <circle
-            cx={size / 2}
-            cy={size / 2}
+            cx={VB / 2}
+            cy={VB / 2}
             r={r}
             fill="none"
             stroke="var(--color-primary)"
@@ -57,11 +51,8 @@ export function Timer({ durations }: { durations: TimerDurations }) {
             style={{ filter: "drop-shadow(0 0 12px var(--color-glow))" }}
           />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-2">
-            {mode === "focus" ? "Deep focus" : "Take a breath"}
-          </div>
-          <div className="font-display text-[7rem] leading-none tabular-nums">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="font-display text-[clamp(3.5rem,16vw,7rem)] leading-none tabular-nums">
             {format(remaining)}
           </div>
         </div>

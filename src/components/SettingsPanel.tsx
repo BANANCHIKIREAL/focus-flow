@@ -87,19 +87,14 @@ export function SettingsPanel({
               value={durations.focus}
               onChange={(v) => setDurations({ focus: v })}
             />
-            <MinuteStepper
-              label="Break time"
-              value={durations.break}
-              onChange={(v) => setDurations({ break: v })}
-            />
             <button
               onClick={() => setDurations(DEFAULT_DURATIONS)}
               className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
             >
-              <RotateCcw size={12} /> Reset to 25 / 5
+              <RotateCcw size={12} /> Reset to 25
             </button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Changes apply on the next start. A running cycle won't be interrupted.
+              Changes apply when the timer is idle. A running session won't be interrupted.
             </p>
           </section>
 
