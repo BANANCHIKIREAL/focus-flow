@@ -218,14 +218,21 @@ function MinuteStepper({
           <Minus size={14} />
         </button>
         <input
-          type="number"
-          min={MIN_MINUTES}
-          max={MAX_MINUTES}
-          value={value}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={value === 0 ? "" : String(value)}
           onChange={(e) => {
-            const n = parseInt(e.target.value, 10);
-            if (Number.isNaN(n)) return;
-            onChange(Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, n)));
+            const raw = e.target.value.replace(/[^0-9]/g, "");
+            if (raw === "") {
+              onChange(0);
+              return;
+            }
+            const n = parseInt(raw, 10);
+            onChange(Math.min(MAX_MINUTES, n));
+          }}
+          onBlur={() => {
+            if (value < MIN_MINUTES) onChange(MIN_MINUTES);
           }}
           className="w-14 bg-transparent text-center text-sm tabular-nums focus:outline-none"
         />
