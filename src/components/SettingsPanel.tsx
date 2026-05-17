@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Upload, RotateCcw, Minus, Plus } from "lucide-react";
+import { X, Upload, RotateCcw, Minus, Plus, VolumeX } from "lucide-react";
 import { BACKGROUNDS, type BackgroundVariant } from "./Background";
+import { SoundMixer } from "./SoundMixer";
+import type { SoundTrack } from "@/hooks/useAudioMixer";
 import {
   DEFAULT_DURATIONS,
   MAX_MINUTES,
   MIN_MINUTES,
   type TimerDurations,
 } from "@/hooks/useTimer";
+import { MAX_BLUR, MIN_BLUR } from "@/hooks/useSettings";
 
 interface Props {
   open: boolean;
@@ -17,6 +20,12 @@ interface Props {
   setBgVariant: (v: BackgroundVariant) => void;
   bgImage: string | null;
   setBgImage: (img: string | null) => void;
+  bgBlur: number;
+  setBgBlur: (n: number) => void;
+  tracks: SoundTrack[];
+  onToggleTrack: (id: string) => void;
+  onVolumeTrack: (id: string, v: number) => void;
+  onStopAll: () => void;
 }
 
 export function SettingsPanel({
@@ -28,8 +37,15 @@ export function SettingsPanel({
   setBgVariant,
   bgImage,
   setBgImage,
+  bgBlur,
+  setBgBlur,
+  tracks,
+  onToggleTrack,
+  onVolumeTrack,
+  onStopAll,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const activeCount = tracks.filter((t) => t.enabled).length;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -57,7 +73,7 @@ export function SettingsPanel({
         }`}
       />
       <aside
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[420px] glass border-l border-border transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] glass border-l border-border transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
@@ -79,7 +95,7 @@ export function SettingsPanel({
         </div>
 
         <div className="overflow-y-auto h-[calc(100%-89px)] px-6 py-6 space-y-8">
-          {/* Timer section */}
+          {/* Timer */}
           <section className="space-y-4">
             <SectionTitle>Timer</SectionTitle>
             <MinuteStepper
@@ -98,10 +114,9 @@ export function SettingsPanel({
             </p>
           </section>
 
-          {/* Background section */}
+          {/* Atmosphere */}
           <section className="space-y-4">
             <SectionTitle>Atmosphere</SectionTitle>
-
             <div className="flex flex-wrap gap-2">
               {BACKGROUNDS.map((b) => (
                 <button
@@ -172,8 +187,51 @@ export function SettingsPanel({
               )}
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Your image is stored locally in your browser. Use a high-resolution photo for best results.
+              Stored locally in your browser and rendered in full resolution.
             </p>
+          </section>
+
+          {/* Background blur */}
+          <section className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>Background blur</SectionTitle>
+              <span className="text-xs tabular-nums text-muted-foreground">{bgBlur}px</span>
+            </div>
+            <input
+              type="range"
+              min={MIN_BLUR}
+              max={MAX_BLUR}
+              step={1}
+              value={bgBlur}
+              onChange={(e) => setBgBlur(parseInt(e.target.value, 10))}
+              className="w-full accent-primary cursor-pointer"
+              aria-label="Background blur"
+            />
+            <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span>Sharp</span>
+              <span>Dreamy</span>
+            </div>
+          </section>
+
+          {/* Sound mixer */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-2">
+                <SectionTitle>Sound mixer</SectionTitle>
+                {activeCount > 0 && (
+                  <span className="text-xs text-primary">{activeCount} active</span>
+                )}
+              </div>
+              {activeCount > 0 && (
+                <button
+                  onClick={onStopAll}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <VolumeX size={14} /> Mute all
+                </button>
+              )}
+            </div>
+            <SoundMixer tracks={tracks} onToggle={onToggleTrack} onVolume={onVolumeTrack} />
           </section>
         </div>
       </aside>
