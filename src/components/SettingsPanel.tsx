@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Upload, RotateCcw, Minus, Plus } from "lucide-react";
 import { BACKGROUNDS, type BackgroundVariant } from "./Background";
 import {
@@ -198,6 +198,27 @@ function MinuteStepper({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const [draft, setDraft] = useState<string>(String(value));
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = (raw: string) => {
+    if (raw === "") {
+      onChange(MIN_MINUTES);
+      setDraft(String(MIN_MINUTES));
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) {
+      setDraft(String(value));
+      return;
+    }
+    const clamped = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, n));
+    onChange(clamped);
+    setDraft(String(clamped));
+  };
+
   const dec = () => onChange(Math.max(MIN_MINUTES, value - 1));
   const inc = () => onChange(Math.min(MAX_MINUTES, value + 1));
 
@@ -218,14 +239,14 @@ function MinuteStepper({
           <Minus size={14} />
         </button>
         <input
-          type="number"
-          min={MIN_MINUTES}
-          max={MAX_MINUTES}
-          value={value}
-          onChange={(e) => {
-            const n = parseInt(e.target.value, 10);
-            if (Number.isNaN(n)) return;
-            onChange(Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, n)));
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={(e) => commit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
           className="w-14 bg-transparent text-center text-sm tabular-nums focus:outline-none"
         />

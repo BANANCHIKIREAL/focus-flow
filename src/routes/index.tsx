@@ -42,7 +42,7 @@ function FocusSpace() {
   const activeCount = tracks.filter((t) => t.enabled).length;
 
   return (
-    <div className="dark relative h-screen w-screen flex flex-col text-foreground">
+    <div className="dark relative min-h-screen w-full flex flex-col text-foreground">
       <Background variant={bgVariant} image={bgImage} />
 
       <header className="flex items-center justify-between px-6 py-5">
