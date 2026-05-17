@@ -198,6 +198,27 @@ function MinuteStepper({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const [draft, setDraft] = useState<string>(String(value));
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = (raw: string) => {
+    if (raw === "") {
+      onChange(MIN_MINUTES);
+      setDraft(String(MIN_MINUTES));
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) {
+      setDraft(String(value));
+      return;
+    }
+    const clamped = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, n));
+    onChange(clamped);
+    setDraft(String(clamped));
+  };
+
   const dec = () => onChange(Math.max(MIN_MINUTES, value - 1));
   const inc = () => onChange(Math.min(MAX_MINUTES, value + 1));
 
@@ -221,18 +242,11 @@ function MinuteStepper({
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
-          value={value === 0 ? "" : String(value)}
-          onChange={(e) => {
-            const raw = e.target.value.replace(/[^0-9]/g, "");
-            if (raw === "") {
-              onChange(0);
-              return;
-            }
-            const n = parseInt(raw, 10);
-            onChange(Math.min(MAX_MINUTES, n));
-          }}
-          onBlur={() => {
-            if (value < MIN_MINUTES) onChange(MIN_MINUTES);
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={(e) => commit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
           className="w-14 bg-transparent text-center text-sm tabular-nums focus:outline-none"
         />
