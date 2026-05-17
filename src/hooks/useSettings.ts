@@ -30,7 +30,7 @@ export function useSettings() {
   // Hydrate from localStorage on mount (avoid SSR mismatch)
   useEffect(() => {
     const d = readJSON<TimerDurations>(KEY_DURATIONS, DEFAULT_DURATIONS);
-    setDurationsState({ focus: clamp(d.focus), break: clamp(d.break) });
+    setDurationsState({ focus: clamp(d.focus) });
     const v = (typeof window !== "undefined" && localStorage.getItem(KEY_BG_VARIANT)) as BackgroundVariant | null;
     if (v) setBgVariantState(v);
     const img = typeof window !== "undefined" ? localStorage.getItem(KEY_BG_IMAGE) : null;
@@ -42,7 +42,6 @@ export function useSettings() {
     setDurationsState((prev) => {
       const merged: TimerDurations = {
         focus: clamp(next.focus ?? prev.focus),
-        break: clamp(next.break ?? prev.break),
       };
       try { localStorage.setItem(KEY_DURATIONS, JSON.stringify(merged)); } catch {}
       return merged;
