@@ -1,5 +1,5 @@
 import { Pause, Play, RotateCcw } from "lucide-react";
-import { useTimer, type TimerMode } from "@/hooks/useTimer";
+import { useTimer, type TimerMode, type TimerDurations } from "@/hooks/useTimer";
 
 function format(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
@@ -7,9 +7,9 @@ function format(s: number) {
   return `${m}:${sec}`;
 }
 
-export function Timer() {
-  const { mode, remaining, running, total, start, pause, reset, switchMode } = useTimer();
-  const progress = 1 - remaining / total;
+export function Timer({ durations }: { durations: TimerDurations }) {
+  const { mode, remaining, running, total, start, pause, reset, switchMode } = useTimer(durations);
+  const progress = total > 0 ? 1 - remaining / total : 0;
   const size = 360;
   const stroke = 3;
   const r = size / 2 - stroke * 2;
