@@ -1,31 +1,66 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Upload, RotateCcw, Minus, Plus, VolumeX } from "lucide-react";
+import {
+  Bell,
+  BellRing,
+  Music,
+  Play,
+  X,
+  Upload,
+  RotateCcw,
+  Minus,
+  Plus,
+} from "lucide-react";
 import { BACKGROUNDS, type BackgroundVariant } from "./Background";
-import { SoundMixer } from "./SoundMixer";
-import type { SoundTrack } from "@/hooks/useAudioMixer";
+import type { FinishSound } from "@/hooks/useFinishSound";
 import {
   DEFAULT_DURATIONS,
   MAX_MINUTES,
   MIN_MINUTES,
   type TimerDurations,
 } from "@/hooks/useTimer";
-import { MAX_BLUR, MIN_BLUR } from "@/hooks/useSettings";
+import {
+  MAX_BLUR,
+  MAX_TIMER_FONT_SIZE,
+  MAX_TIMER_RING_WIDTH,
+  MIN_BLUR,
+  MIN_TIMER_FONT_SIZE,
+  MIN_TIMER_RING_WIDTH,
+  TIMER_FONT_STYLES,
+  TIMER_RING_STYLES,
+} from "@/hooks/useSettings";
+import type { translations } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   durations: TimerDurations;
   setDurations: (d: Partial<TimerDurations>) => void;
+  lunchEnabled: boolean;
+  setLunchEnabled: (enabled: boolean) => void;
   bgVariant: BackgroundVariant;
   setBgVariant: (v: BackgroundVariant) => void;
   bgImage: string | null;
   setBgImage: (img: string | null) => void;
   bgBlur: number;
   setBgBlur: (n: number) => void;
-  tracks: SoundTrack[];
-  onToggleTrack: (id: string) => void;
-  onVolumeTrack: (id: string, v: number) => void;
-  onStopAll: () => void;
+  timerRingStyleId: string;
+  timerRingWidth: number;
+  setTimerRingStyle: (id: string) => void;
+  setTimerRingWidth: (n: number) => void;
+  timerFontStyleId: string;
+  setTimerFontStyle: (id: string) => void;
+  timerFontSize: number;
+  setTimerFontSize: (n: number) => void;
+  finishSounds: FinishSound[];
+  selectedFinishSoundId: string;
+  customFinishSoundName: string | null;
+  onSelectFinishSound: (id: string) => void;
+  onUploadFinishSound: (file: File) => void;
+  onClearCustomFinishSound: () => void;
+  onPreviewFinishSound: () => void;
+  notificationPermission: NotificationPermission | "unsupported";
+  onRequestNotifications: () => void;
+  copy: typeof translations.en;
 }
 
 export function SettingsPanel({
@@ -33,19 +68,36 @@ export function SettingsPanel({
   onClose,
   durations,
   setDurations,
+  lunchEnabled,
+  setLunchEnabled,
   bgVariant,
   setBgVariant,
   bgImage,
   setBgImage,
   bgBlur,
   setBgBlur,
-  tracks,
-  onToggleTrack,
-  onVolumeTrack,
-  onStopAll,
+  timerRingStyleId,
+  timerRingWidth,
+  setTimerRingStyle,
+  setTimerRingWidth,
+  timerFontStyleId,
+  setTimerFontStyle,
+  timerFontSize,
+  setTimerFontSize,
+  finishSounds,
+  selectedFinishSoundId,
+  customFinishSoundName,
+  onSelectFinishSound,
+  onUploadFinishSound,
+  onClearCustomFinishSound,
+  onPreviewFinishSound,
+  notificationPermission,
+  onRequestNotifications,
+  copy,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const activeCount = tracks.filter((t) => t.enabled).length;
+  const audioFileRef = useRef<HTMLInputElement>(null);
+  const [panelScale, setPanelScale] = useState(100);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,22 +125,23 @@ export function SettingsPanel({
         }`}
       />
       <aside
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] glass border-l border-border transition-transform duration-300 ease-out ${
+        className={`settings-panel fixed top-0 right-0 z-50 h-full glass border-l border-border transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
+        style={{ "--settings-scale": panelScale / 100 } as React.CSSProperties}
         aria-hidden={!open}
       >
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-              Settings
+              {copy.settings}
             </div>
-            <h2 className="font-display text-2xl">Your Focus Space</h2>
+            <h2 className="font-display text-2xl">{copy.yourFocusSpace}</h2>
           </div>
           <button
             onClick={onClose}
             className="h-9 w-9 rounded-full glass flex items-center justify-center hover:text-primary transition-colors"
-            aria-label="Close settings"
+            aria-label={copy.closeSettings}
           >
             <X size={16} />
           </button>
@@ -97,26 +150,222 @@ export function SettingsPanel({
         <div className="overflow-y-auto h-[calc(100%-89px)] px-6 py-6 space-y-8">
           {/* Timer */}
           <section className="space-y-4">
-            <SectionTitle>Timer</SectionTitle>
+            <SectionTitle>{copy.timer}</SectionTitle>
             <MinuteStepper
-              label="Focus time"
+              label={copy.focusTime}
               value={durations.focus}
               onChange={(v) => setDurations({ focus: v })}
             />
+            <label className="flex items-center justify-between gap-3 rounded-2xl glass px-4 py-3">
+              <span>
+                <span className="block text-sm">{copy.lunchAfterTimer}</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {copy.lunchDescription}
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={lunchEnabled}
+                onChange={(e) => setLunchEnabled(e.target.checked)}
+                className="h-5 w-5 accent-primary cursor-pointer"
+                aria-label={copy.enableLunch}
+              />
+            </label>
+            {lunchEnabled && (
+              <MinuteStepper
+                label={copy.lunchTime}
+                value={durations.lunch}
+                onChange={(v) => setDurations({ lunch: v })}
+              />
+            )}
             <button
               onClick={() => setDurations(DEFAULT_DURATIONS)}
               className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
             >
-              <RotateCcw size={12} /> Reset to 25
+              <RotateCcw size={12} /> {copy.resetTo25}
             </button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Changes apply when the timer is idle. A running session won't be interrupted.
+              {copy.timerIdleNote}
             </p>
+          </section>
+
+          {/* Countdown font */}
+          <section className="space-y-4">
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>{copy.countdownFont}</SectionTitle>
+              <span className="text-xs tabular-nums text-muted-foreground">{timerFontSize}px</span>
+            </div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
+              {TIMER_FONT_STYLES.map((style) => (
+                <button
+                  key={style.id}
+                  onClick={() => setTimerFontStyle(style.id)}
+                  className={`h-14 rounded-2xl glass px-4 text-left transition-all ${
+                    timerFontStyleId === style.id
+                      ? "text-foreground glow-ring"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span className={`${style.className} block text-xl leading-none tabular-nums`}>
+                    25:00
+                  </span>
+                  <span className="mt-1 block text-[10px] uppercase tracking-wider">
+                    {style.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <input
+              type="range"
+              min={MIN_TIMER_FONT_SIZE}
+              max={MAX_TIMER_FONT_SIZE}
+              step={4}
+              value={timerFontSize}
+              onChange={(e) => setTimerFontSize(parseInt(e.target.value, 10))}
+              className="w-full accent-primary cursor-pointer"
+              aria-label="Countdown font size"
+            />
+            <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span>{copy.small}</span>
+              <span>{copy.large}</span>
+            </div>
+          </section>
+
+          {/* Timer ring */}
+          <section className="space-y-4">
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>{copy.timerRing}</SectionTitle>
+              <span className="text-xs tabular-nums text-muted-foreground">{timerRingWidth}px</span>
+            </div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
+              {TIMER_RING_STYLES.map((style) => (
+                <button
+                  key={style.id}
+                  onClick={() => setTimerRingStyle(style.id)}
+                  className={`h-12 rounded-2xl glass px-4 text-sm inline-flex items-center gap-3 text-left transition-all ${
+                    timerRingStyleId === style.id
+                      ? "text-foreground glow-ring"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span
+                    className="h-5 w-5 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: style.color,
+                      boxShadow: `0 0 18px ${style.glow}`,
+                    }}
+                  />
+                  {style.name}
+                </button>
+              ))}
+            </div>
+            <input
+              type="range"
+              min={MIN_TIMER_RING_WIDTH}
+              max={MAX_TIMER_RING_WIDTH}
+              step={1}
+              value={timerRingWidth}
+              onChange={(e) => setTimerRingWidth(parseInt(e.target.value, 10))}
+              className="w-full accent-primary cursor-pointer"
+              aria-label="Timer ring width"
+            />
+            <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span>{copy.thin}</span>
+              <span>{copy.bold}</span>
+            </div>
+          </section>
+
+          {/* Finish sound */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <SectionTitle>{copy.finishSound}</SectionTitle>
+              <button
+                onClick={onPreviewFinishSound}
+                className="h-8 px-3 rounded-full glass text-xs inline-flex items-center gap-1.5 hover:text-primary transition-colors"
+              >
+                <Play size={12} fill="currentColor" />
+                {copy.preview}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
+              {finishSounds.map((sound) => (
+                <button
+                  key={sound.id}
+                  onClick={() => onSelectFinishSound(sound.id)}
+                  className={`h-12 rounded-2xl glass px-4 text-sm inline-flex items-center gap-3 text-left transition-all ${
+                    selectedFinishSoundId === sound.id
+                      ? "text-foreground glow-ring"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Bell size={16} />
+                  {sound.name}
+                </button>
+              ))}
+              <button
+                onClick={() => {
+                  if (customFinishSoundName) onSelectFinishSound("custom");
+                  else audioFileRef.current?.click();
+                }}
+                className={`h-12 rounded-2xl glass px-4 text-sm inline-flex items-center gap-3 text-left transition-all ${
+                  selectedFinishSoundId === "custom"
+                    ? "text-foreground glow-ring"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Music size={16} />
+                <span className="min-w-0 truncate">
+                  {customFinishSoundName ?? copy.customAudio}
+                </span>
+              </button>
+            </div>
+            <input
+              ref={audioFileRef}
+              type="file"
+              accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onUploadFinishSound(f);
+                e.target.value = "";
+              }}
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => audioFileRef.current?.click()}
+                className="h-10 px-4 rounded-full bg-foreground text-background text-sm font-medium inline-flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+              >
+                <Upload size={14} />
+                {copy.uploadAudio}
+              </button>
+              {customFinishSoundName && (
+                <button
+                  onClick={onClearCustomFinishSound}
+                  className="h-10 px-4 rounded-full glass text-sm inline-flex items-center gap-2 hover:text-primary transition-colors"
+                >
+                  <RotateCcw size={14} /> {copy.resetCustom}
+                </button>
+              )}
+            </div>
+            <button
+              onClick={onRequestNotifications}
+              disabled={notificationPermission === "granted" || notificationPermission === "unsupported"}
+              className="h-10 w-full rounded-full glass text-sm inline-flex items-center justify-center gap-2 hover:text-primary transition-colors disabled:cursor-default disabled:text-muted-foreground"
+            >
+              <BellRing size={14} />
+              {notificationPermission === "granted"
+                ? copy.notificationsEnabled
+                : notificationPermission === "denied"
+                  ? copy.notificationsBlocked
+                  : notificationPermission === "unsupported"
+                    ? copy.notificationsUnsupported
+                    : copy.enableNotifications}
+            </button>
           </section>
 
           {/* Atmosphere */}
           <section className="space-y-4">
-            <SectionTitle>Atmosphere</SectionTitle>
+            <SectionTitle>{copy.atmosphere}</SectionTitle>
             <div className="flex flex-wrap gap-2">
               {BACKGROUNDS.map((b) => (
                 <button
@@ -139,7 +388,7 @@ export function SettingsPanel({
 
           {/* Custom image */}
           <section className="space-y-4">
-            <SectionTitle>Custom background</SectionTitle>
+            <SectionTitle>{copy.customBackground}</SectionTitle>
 
             <div
               className="aspect-video w-full rounded-2xl overflow-hidden glass flex items-center justify-center relative"
@@ -154,7 +403,7 @@ export function SettingsPanel({
               }
             >
               {!bgImage && (
-                <span className="text-xs text-muted-foreground">No image selected</span>
+                <span className="text-xs text-muted-foreground">{copy.noImageSelected}</span>
               )}
             </div>
 
@@ -175,26 +424,26 @@ export function SettingsPanel({
                 className="flex-1 h-10 rounded-full bg-foreground text-background text-sm font-medium inline-flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
               >
                 <Upload size={14} />
-                {bgImage ? "Change background" : "Upload image"}
+                {bgImage ? copy.changeBackground : copy.uploadImage}
               </button>
               {bgImage && (
                 <button
                   onClick={() => setBgImage(null)}
                   className="h-10 px-4 rounded-full glass text-sm inline-flex items-center gap-2 hover:text-primary transition-colors"
                 >
-                  <RotateCcw size={14} /> Reset
+                  <RotateCcw size={14} /> {copy.reset}
                 </button>
               )}
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Stored locally in your browser and rendered in full resolution.
+              {copy.storedLocally}
             </p>
           </section>
 
           {/* Background blur */}
           <section className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <SectionTitle>Background blur</SectionTitle>
+              <SectionTitle>{copy.backgroundBlur}</SectionTitle>
               <span className="text-xs tabular-nums text-muted-foreground">{bgBlur}px</span>
             </div>
             <input
@@ -208,30 +457,31 @@ export function SettingsPanel({
               aria-label="Background blur"
             />
             <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span>Sharp</span>
-              <span>Dreamy</span>
+              <span>{copy.sharp}</span>
+              <span>{copy.dreamy}</span>
             </div>
           </section>
 
-          {/* Sound mixer */}
+          {/* Panel size */}
           <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-baseline gap-2">
-                <SectionTitle>Sound mixer</SectionTitle>
-                {activeCount > 0 && (
-                  <span className="text-xs text-primary">{activeCount} active</span>
-                )}
-              </div>
-              {activeCount > 0 && (
-                <button
-                  onClick={onStopAll}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <VolumeX size={14} /> Mute all
-                </button>
-              )}
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>{copy.settingsSize}</SectionTitle>
+              <span className="text-xs tabular-nums text-muted-foreground">{panelScale}%</span>
             </div>
-            <SoundMixer tracks={tracks} onToggle={onToggleTrack} onVolume={onVolumeTrack} />
+            <input
+              type="range"
+              min={100}
+              max={135}
+              step={5}
+              value={panelScale}
+              onChange={(e) => setPanelScale(parseInt(e.target.value, 10))}
+              className="w-full accent-primary cursor-pointer"
+              aria-label="Settings panel size"
+            />
+            <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span>{copy.compact}</span>
+              <span>{copy.roomy}</span>
+            </div>
           </section>
         </div>
       </aside>

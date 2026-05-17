@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Settings } from "lucide-react";
 import { Background } from "@/components/Background";
+import { SoundDock } from "@/components/SoundDock";
 import { Timer } from "@/components/Timer";
 import { SettingsPanel } from "@/components/SettingsPanel";
+import { TodayTasks } from "@/components/TodayTasks";
 import { useAudioMixer } from "@/hooks/useAudioMixer";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
+import { useDailyTasks } from "@/hooks/useDailyTasks";
+import { useFinishSound } from "@/hooks/useFinishSound";
 import { useSettings } from "@/hooks/useSettings";
+import { translations } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   component: FocusSpace,
@@ -32,15 +38,45 @@ function FocusSpace() {
   const {
     durations,
     setDurations,
+    lunchEnabled,
+    setLunchEnabled,
     bgVariant,
     setBgVariant,
     bgImage,
     setBgImage,
     bgBlur,
     setBgBlur,
+    timerRingStyle,
+    setTimerRingStyle,
+    timerRingWidth,
+    setTimerRingWidth,
+    timerFontStyle,
+    setTimerFontStyle,
+    timerFontSize,
+    setTimerFontSize,
   } = useSettings();
+  const copy = translations.en;
   const { tracks, toggle, setVolume, stopAll } = useAudioMixer();
+  const {
+    finishSounds,
+    selectedSoundId,
+    customSound,
+    setSelectedSoundId,
+    uploadCustomSound,
+    clearCustomSound,
+    playFinishSound,
+  } = useFinishSound();
+  const {
+    notificationPermission,
+    requestNotificationPermission,
+    notifyTimerComplete,
+  } = useBrowserNotifications();
+  const { tasks, doneCount, addTask, toggleTask, removeTask, clearDone } = useDailyTasks();
   const activeCount = tracks.filter((t) => t.enabled).length;
+  const completeTimer = useCallback(() => {
+    playFinishSound();
+    notifyTimerComplete();
+  }, [notifyTimerComplete, playFinishSound]);
 
   return (
     <div className="dark relative min-h-screen w-full flex flex-col text-foreground">
@@ -59,16 +95,51 @@ function FocusSpace() {
           className="h-9 px-4 rounded-full glass text-xs inline-flex items-center gap-2 hover:text-primary transition-colors"
         >
           <Settings size={14} />
-          Settings
+          {copy.settings}
           {activeCount > 0 && (
             <span className="ml-1 h-1.5 w-1.5 rounded-full bg-primary animate-pulse-soft" />
           )}
         </button>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-10">
+      <main className="flex-1 px-6 pt-8 pb-10 lg:px-10 lg:pt-4">
         <h1 className="sr-only">Focus Space — ambient sounds and focus timer</h1>
-        <Timer durations={durations} />
+        <div className="grid items-center gap-8 lg:grid-cols-[minmax(280px,1fr)_minmax(320px,420px)]">
+          <div className="flex justify-center lg:justify-end">
+            <Timer
+              durations={durations}
+              lunchEnabled={lunchEnabled}
+              onComplete={completeTimer}
+              ringStyle={timerRingStyle}
+              ringWidth={timerRingWidth}
+              fontStyle={timerFontStyle}
+              fontSize={timerFontSize}
+              copy={copy}
+            />
+          </div>
+          <div className="flex justify-center lg:justify-start">
+            <TodayTasks
+              tasks={tasks}
+              doneCount={doneCount}
+              onAdd={addTask}
+              onToggle={toggleTask}
+            onRemove={removeTask}
+            onClearDone={clearDone}
+            copy={copy}
+          />
+          </div>
+        </div>
+
+        <div className="mt-8 md:mt-10">
+          <SoundDock
+            activeCount={activeCount}
+            tracks={tracks}
+            onToggleTrack={toggle}
+            onVolumeTrack={setVolume}
+            onStopAll={stopAll}
+            copy={copy}
+          />
+        </div>
       </main>
 
       <SettingsPanel
@@ -76,16 +147,32 @@ function FocusSpace() {
         onClose={() => setSettingsOpen(false)}
         durations={durations}
         setDurations={setDurations}
+        lunchEnabled={lunchEnabled}
+        setLunchEnabled={setLunchEnabled}
         bgVariant={bgVariant}
         setBgVariant={setBgVariant}
         bgImage={bgImage}
         setBgImage={setBgImage}
         bgBlur={bgBlur}
         setBgBlur={setBgBlur}
-        tracks={tracks}
-        onToggleTrack={toggle}
-        onVolumeTrack={setVolume}
-        onStopAll={stopAll}
+        timerRingStyleId={timerRingStyle.id}
+        timerRingWidth={timerRingWidth}
+        setTimerRingStyle={setTimerRingStyle}
+        setTimerRingWidth={setTimerRingWidth}
+        timerFontStyleId={timerFontStyle.id}
+        setTimerFontStyle={setTimerFontStyle}
+        timerFontSize={timerFontSize}
+        setTimerFontSize={setTimerFontSize}
+        finishSounds={finishSounds}
+        selectedFinishSoundId={selectedSoundId}
+        customFinishSoundName={customSound?.name ?? null}
+        onSelectFinishSound={setSelectedSoundId}
+        onUploadFinishSound={uploadCustomSound}
+        onClearCustomFinishSound={clearCustomSound}
+        onPreviewFinishSound={playFinishSound}
+        notificationPermission={notificationPermission}
+        onRequestNotifications={() => void requestNotificationPermission()}
+        copy={copy}
       />
     </div>
   );

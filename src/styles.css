@@ -100,6 +100,14 @@
   .bg-dusk { background: var(--gradient-dusk); }
   .bg-forest { background: var(--gradient-forest); }
   .font-display { font-family: var(--font-display); }
+  .settings-panel {
+    width: min(100vw, 440px);
+  }
+  @media (min-width: 768px) {
+    .settings-panel {
+      width: min(92vw, calc(560px * var(--settings-scale, 1)));
+    }
+  }
 }
 
 @keyframes wave-drift {
