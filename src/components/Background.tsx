@@ -10,9 +10,11 @@ export const BACKGROUNDS: { id: BackgroundVariant; label: string }[] = [
 interface Props {
   variant: BackgroundVariant;
   image?: string | null;
+  blur?: number;
 }
 
-export function Background({ variant, image }: Props) {
+export function Background({ variant, image, blur = 0 }: Props) {
+  const blurPx = Math.max(0, Math.min(40, blur));
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
       <div
@@ -47,27 +49,31 @@ export function Background({ variant, image }: Props) {
         />
       </div>
 
-      {/* Custom image layer */}
+      {/* Custom image layer — rendered at max quality, slightly oversized so blur edges stay clean */}
       <div
-        className={`absolute inset-0 transition-opacity duration-1000 ${
+        className={`absolute transition-opacity duration-1000 ${
           image ? "opacity-100" : "opacity-0"
         }`}
         style={{
+          // Oversize so a CSS blur doesn't reveal transparent edges
+          inset: blurPx > 0 ? `-${Math.ceil(blurPx * 2)}px` : 0,
           backgroundImage: image ? `url(${image})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          imageRendering: "auto",
+          filter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
+          willChange: blurPx > 0 ? "filter" : undefined,
         }}
       />
 
-      {/* Readability overlay (stronger when custom image is set) */}
+      {/* Readability overlay — gentle, no extra blur (blur is user-controlled now) */}
       <div
         className="absolute inset-0 pointer-events-none transition-colors duration-1000"
         style={{
           background: image
-            ? "linear-gradient(180deg, oklch(0 0 0 / 0.45), oklch(0 0 0 / 0.65))"
+            ? "linear-gradient(180deg, oklch(0 0 0 / 0.35), oklch(0 0 0 / 0.55))"
             : "radial-gradient(ellipse at center, transparent 40%, oklch(0 0 0 / 0.5) 100%)",
-          backdropFilter: image ? "blur(2px)" : undefined,
-          WebkitBackdropFilter: image ? "blur(2px)" : undefined,
         }}
       />
     </div>
