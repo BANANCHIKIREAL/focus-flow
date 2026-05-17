@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, Upload, RotateCcw, Minus, Plus } from "lucide-react";
 import { BACKGROUNDS, type BackgroundVariant } from "./Background";
 import {
