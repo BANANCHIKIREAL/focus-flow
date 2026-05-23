@@ -41,6 +41,7 @@ async function main() {
   }
 
   // Prefer a client-side entry: pick largest index-*.js from dist/client/assets if present
+  let clientEntryChosen = false;
   try {
     const fs = await import('node:fs');
     const clientFiles = await fs.promises.readdir(clientAssetsDir);
@@ -49,6 +50,7 @@ async function main() {
       const stats = await Promise.all(indexFiles.map(async f => ({ f, s: await fs.promises.stat(resolve(clientAssetsDir, f)) })));
       stats.sort((a, b) => b.s.size - a.s.size);
       startFile = `assets/${stats[0].f}`;
+      clientEntryChosen = true;
     }
   } catch (err) {
     // ignore and keep server-detected startFile
@@ -80,6 +82,32 @@ async function main() {
     }
   }
 
+  // Find router manifest file and read its content
+  let routerManifestData = { routes: {} };
+  try {
+    const fs = await import('node:fs');
+    const clientFiles = await fs.promises.readdir(clientAssetsDir);
+    const manifestFiles = clientFiles.filter(f => f.startsWith('_tanstack-start-manifest_v-') && f.endsWith('.js'));
+    if (manifestFiles.length > 0) {
+      const manifestFile = manifestFiles[0];
+      const manifestContent = await fs.promises.readFile(resolve(clientAssetsDir, manifestFile), 'utf8');
+      // Extract the manifest from the function call
+      // Format: const tsrStartManifest = () => ({ routes: {...}, clientEntry: "..." });
+      const functionMatch = manifestContent.match(/const tsrStartManifest = \(\) => \(([\s\S]+?)\);/);
+      if (functionMatch) {
+        try {
+          // Use Function to safely evaluate the object literal
+          routerManifestData = new Function('return ' + functionMatch[1])();
+        } catch (e) {
+          console.warn('Could not parse router manifest:', e.message);
+          routerManifestData = { routes: {} };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read router manifest:', err.message);
+  }
+  
   if (!startFile) {
     console.log('Could not find start entry in manifest; aborting index generation.');
     return;
@@ -89,6 +117,7 @@ async function main() {
   const normalize = (p) => p ? p.replace(/^assets[\\/]/, '') : p;
   const startFileName = normalize(startFile);
   const styleFileName = normalize(styleFile);
+  const routerManifestJson = JSON.stringify(routerManifestData);
 
   const indexHtml = `<!doctype html>
 <html lang="en">
@@ -100,6 +129,19 @@ async function main() {
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.$_TSR = window.$_TSR || {
+        h: () => {},
+        buffer: [],
+        initialized: true,
+        router: {
+          matches: [],
+          lastMatchId: null,
+          manifest: ${routerManifestJson},
+          dehydratedData: {}
+        }
+      };
+    </script>
     <script type="module" src="/assets/${startFileName}"></script>
   </body>
 </html>`;

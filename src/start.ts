@@ -21,4 +21,6 @@ export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
   // Disable default SSR on client builds to allow client-only render on static hosts
   defaultSsr: false,
+  // Disable hydration for client-only static renders to avoid mismatch errors
+  hydrate: false,
 }));

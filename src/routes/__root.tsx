@@ -115,7 +115,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  // Create a fallback QueryClient for client-only rendering
+  const contextData = Route.useRouteContext();
+  const queryClient = contextData?.queryClient || new QueryClient();
 
   return (
     <QueryClientProvider client={queryClient}>
