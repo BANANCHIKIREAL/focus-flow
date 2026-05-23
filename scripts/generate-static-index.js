@@ -40,7 +40,7 @@ async function main() {
     }
   }
 
-  // Prefer a client-side entry: pick largest index-*.js from dist/client/assets if present
+  // Prefer a client-side entry: pick newest/most recently modified index-*.js from dist/client/assets if present
   let clientEntryChosen = false;
   try {
     const fs = await import('node:fs');
@@ -48,7 +48,8 @@ async function main() {
     const indexFiles = clientFiles.filter(f => /^index-[\w\-]+\.js$/.test(f));
     if (indexFiles.length > 0) {
       const stats = await Promise.all(indexFiles.map(async f => ({ f, s: await fs.promises.stat(resolve(clientAssetsDir, f)) })));
-      stats.sort((a, b) => b.s.size - a.s.size);
+      // Sort by modification time (newest first)
+      stats.sort((a, b) => (b.s.mtimeMs || 0) - (a.s.mtimeMs || 0));
       startFile = `assets/${stats[0].f}`;
       clientEntryChosen = true;
     }
