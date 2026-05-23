@@ -19,4 +19,6 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
+  // Disable default SSR on client builds to allow client-only render on static hosts
+  defaultSsr: false,
 }));
