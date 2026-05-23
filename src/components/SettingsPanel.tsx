@@ -14,8 +14,8 @@ import { BACKGROUNDS, type BackgroundVariant } from "./Background";
 import type { FinishSound } from "@/hooks/useFinishSound";
 import {
   DEFAULT_DURATIONS,
-  MAX_MINUTES,
-  MIN_MINUTES,
+  MAX_SECONDS,
+  MIN_SECONDS,
   type TimerDurations,
 } from "@/hooks/useTimer";
 import {
@@ -44,6 +44,8 @@ interface Props {
   bgBlur: number;
   setBgBlur: (n: number) => void;
   timerRingStyleId: string;
+  customTimerRingColor: string;
+  setCustomTimerRingColor: (color: string) => void;
   timerRingWidth: number;
   setTimerRingStyle: (id: string) => void;
   setTimerRingWidth: (n: number) => void;
@@ -77,6 +79,8 @@ export function SettingsPanel({
   bgBlur,
   setBgBlur,
   timerRingStyleId,
+  customTimerRingColor,
+  setCustomTimerRingColor,
   timerRingWidth,
   setTimerRingStyle,
   setTimerRingWidth,
@@ -97,6 +101,7 @@ export function SettingsPanel({
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const audioFileRef = useRef<HTMLInputElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
   const [panelScale, setPanelScale] = useState(100);
 
   useEffect(() => {
@@ -151,7 +156,7 @@ export function SettingsPanel({
           {/* Timer */}
           <section className="space-y-4">
             <SectionTitle>{copy.timer}</SectionTitle>
-            <MinuteStepper
+            <TimeStepper
               label={copy.focusTime}
               value={durations.focus}
               onChange={(v) => setDurations({ focus: v })}
@@ -172,7 +177,7 @@ export function SettingsPanel({
               />
             </label>
             {lunchEnabled && (
-              <MinuteStepper
+              <TimeStepper
                 label={copy.lunchTime}
                 value={durations.lunch}
                 onChange={(v) => setDurations({ lunch: v })}
@@ -182,11 +187,8 @@ export function SettingsPanel({
               onClick={() => setDurations(DEFAULT_DURATIONS)}
               className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
             >
-              <RotateCcw size={12} /> {copy.resetTo25}
+              <RotateCcw size={12} /> Reset to 25 min
             </button>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {copy.timerIdleNote}
-            </p>
           </section>
 
           {/* Countdown font */}
@@ -195,21 +197,21 @@ export function SettingsPanel({
               <SectionTitle>{copy.countdownFont}</SectionTitle>
               <span className="text-xs tabular-nums text-muted-foreground">{timerFontSize}px</span>
             </div>
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 min-[600px]:grid-cols-3 min-[900px]:grid-cols-4 gap-2">
               {TIMER_FONT_STYLES.map((style) => (
                 <button
                   key={style.id}
                   onClick={() => setTimerFontStyle(style.id)}
-                  className={`h-14 rounded-2xl glass px-4 text-left transition-all ${
+                  className={`h-10 rounded-lg glass px-2 text-center transition-all ${
                     timerFontStyleId === style.id
                       ? "text-foreground glow-ring"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <span className={`${style.className} block text-xl leading-none tabular-nums`}>
+                  <span className={`${style.className} block text-sm leading-none tabular-nums`}>
                     25:00
                   </span>
-                  <span className="mt-1 block text-[10px] uppercase tracking-wider">
+                  <span className="block text-[8px] uppercase tracking-wide truncate">
                     {style.name}
                   </span>
                 </button>
@@ -258,6 +260,32 @@ export function SettingsPanel({
                   {style.name}
                 </button>
               ))}
+              <button
+                key="custom"
+                onClick={() => setTimerRingStyle("custom")}
+                className={`relative h-12 rounded-2xl glass px-4 text-sm inline-flex items-center gap-3 text-left transition-all ${
+                  timerRingStyleId === "custom"
+                    ? "text-foreground glow-ring"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span
+                  className="h-5 w-5 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: customTimerRingColor,
+                    boxShadow: `0 0 18px ${customTimerRingColor}`,
+                  }}
+                />
+                {copy.customColor}
+                <input
+                  ref={colorInputRef}
+                  type="color"
+                  value={customTimerRingColor}
+                  onChange={(e) => setCustomTimerRingColor(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  aria-label={copy.customColor}
+                />
+              </button>
             </div>
             <input
               type="range"
@@ -435,9 +463,6 @@ export function SettingsPanel({
                 </button>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {copy.storedLocally}
-            </p>
           </section>
 
           {/* Background blur */}
@@ -513,8 +538,8 @@ function MinuteStepper({
 
   const commit = (raw: string) => {
     if (raw === "") {
-      onChange(MIN_MINUTES);
-      setDraft(String(MIN_MINUTES));
+      onChange(MIN_SECONDS);
+      setDraft(String(MIN_SECONDS));
       return;
     }
     const n = parseInt(raw, 10);
@@ -522,20 +547,20 @@ function MinuteStepper({
       setDraft(String(value));
       return;
     }
-    const clamped = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, n));
+    const clamped = Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, n));
     onChange(clamped);
     setDraft(String(clamped));
   };
 
-  const dec = () => onChange(Math.max(MIN_MINUTES, value - 1));
-  const inc = () => onChange(Math.min(MAX_MINUTES, value + 1));
+  const dec = () => onChange(Math.max(MIN_SECONDS, value - 1));
+  const inc = () => onChange(Math.min(MAX_SECONDS, value + 1));
 
   return (
     <div className="flex items-center justify-between gap-3">
       <div>
         <div className="text-sm">{label}</div>
         <div className="text-[11px] text-muted-foreground">
-          {MIN_MINUTES}–{MAX_MINUTES} minutes
+          {Math.ceil(MIN_SECONDS / 60)}–{Math.floor(MAX_SECONDS / 60)} minutes
         </div>
       </div>
       <div className="flex items-center gap-1 glass rounded-full p-1">
@@ -562,6 +587,136 @@ function MinuteStepper({
           onClick={inc}
           className="h-8 w-8 rounded-full hover:bg-foreground/10 flex items-center justify-center"
           aria-label={`Increase ${label}`}
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TimeStepper({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
+  const [draftMin, setDraftMin] = useState<string>(String(minutes));
+  const [draftSec, setDraftSec] = useState<string>(String(seconds).padStart(2, "0"));
+
+  useEffect(() => {
+    setDraftMin(String(Math.floor(value / 60)));
+    setDraftSec(String(value % 60).padStart(2, "0"));
+  }, [value]);
+
+  const commit = (minStr: string, secStr: string) => {
+    const min = minStr === "" ? 0 : parseInt(minStr, 10);
+    const sec = secStr === "" ? 0 : parseInt(secStr, 10);
+    if (Number.isNaN(min) || Number.isNaN(sec)) return;
+    const totalSec = Math.max(MIN_SECONDS, min * 60 + Math.min(59, sec));
+    const clamped = Math.min(MAX_SECONDS, totalSec);
+    onChange(clamped);
+    setDraftMin(String(Math.floor(clamped / 60)));
+    setDraftSec(String(clamped % 60).padStart(2, "0"));
+  };
+
+  const handleMinChange = (val: string) => {
+    setDraftMin(val.replace(/[^0-9]/g, ""));
+  };
+
+  const handleSecChange = (val: string) => {
+    setDraftSec(val.replace(/[^0-9]/g, "").slice(0, 2));
+  };
+
+  const decMin = () => {
+    if (minutes > 0) {
+      const newValue = value - 60;
+      onChange(Math.max(MIN_SECONDS, newValue));
+    }
+  };
+
+  const incMin = () => {
+    const newValue = value + 60;
+    onChange(Math.min(MAX_SECONDS, newValue));
+  };
+
+  const decSec = () => {
+    const newValue = value - 1;
+    onChange(Math.max(MIN_SECONDS, newValue));
+  };
+
+  const incSec = () => {
+    const newValue = value + 1;
+    onChange(Math.min(MAX_SECONDS, newValue));
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <div className="text-sm">{label}</div>
+      </div>
+      <div className="flex items-center gap-2 glass rounded-full p-1">
+        <button
+          onClick={decMin}
+          className="h-8 w-8 rounded-full hover:bg-foreground/10 flex items-center justify-center"
+          aria-label="Decrease minutes"
+        >
+          <Minus size={14} />
+        </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={draftMin}
+          onChange={(e) => handleMinChange(e.target.value)}
+          onBlur={() => commit(draftMin, draftSec)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit(draftMin, draftSec);
+          }}
+          className="w-10 bg-transparent text-center text-sm tabular-nums focus:outline-none"
+          placeholder="0"
+        />
+        <span className="text-xs text-muted-foreground px-1">m</span>
+        <button
+          onClick={incMin}
+          className="h-8 w-8 rounded-full hover:bg-foreground/10 flex items-center justify-center"
+          aria-label="Increase minutes"
+        >
+          <Plus size={14} />
+        </button>
+
+        <div className="w-px h-6 bg-foreground/10 mx-1" />
+
+        <button
+          onClick={decSec}
+          className="h-8 w-8 rounded-full hover:bg-foreground/10 flex items-center justify-center"
+          aria-label="Decrease seconds"
+        >
+          <Minus size={14} />
+        </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={draftSec}
+          onChange={(e) => handleSecChange(e.target.value)}
+          onBlur={() => commit(draftMin, draftSec)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit(draftMin, draftSec);
+          }}
+          className="w-10 bg-transparent text-center text-sm tabular-nums focus:outline-none"
+          placeholder="00"
+        />
+        <span className="text-xs text-muted-foreground px-1">s</span>
+        <button
+          onClick={incSec}
+          className="h-8 w-8 rounded-full hover:bg-foreground/10 flex items-center justify-center"
+          aria-label="Increase seconds"
         >
           <Plus size={14} />
         </button>

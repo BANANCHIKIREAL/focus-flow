@@ -48,6 +48,8 @@ function FocusSpace() {
     setBgBlur,
     timerRingStyle,
     setTimerRingStyle,
+    customTimerRingColor,
+    setCustomTimerRingColor,
     timerRingWidth,
     setTimerRingWidth,
     timerFontStyle,
@@ -96,9 +98,6 @@ function FocusSpace() {
         >
           <Settings size={14} />
           {copy.settings}
-          {activeCount > 0 && (
-            <span className="ml-1 h-1.5 w-1.5 rounded-full bg-primary animate-pulse-soft" />
-          )}
         </button>
       </header>
 
@@ -156,6 +155,8 @@ function FocusSpace() {
         bgBlur={bgBlur}
         setBgBlur={setBgBlur}
         timerRingStyleId={timerRingStyle.id}
+        customTimerRingColor={customTimerRingColor}
+        setCustomTimerRingColor={setCustomTimerRingColor}
         timerRingWidth={timerRingWidth}
         setTimerRingStyle={setTimerRingStyle}
         setTimerRingWidth={setTimerRingWidth}

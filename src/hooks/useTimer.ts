@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface TimerDurations {
-  focus: number; // minutes
-  lunch: number; // minutes
+  focus: number; // seconds
+  lunch: number; // seconds
 }
 
 export type TimerPhase = "focus" | "lunch";
 
-export const DEFAULT_DURATIONS: TimerDurations = { focus: 25, lunch: 5 };
-export const MIN_MINUTES = 1;
-export const MAX_MINUTES = 180;
+export const DEFAULT_DURATIONS: TimerDurations = { focus: 25 * 60, lunch: 5 * 60 };
+export const MIN_SECONDS = 1;
+export const MAX_SECONDS = 600 * 60; // 600 minutes = 10 hours
 
 function getPhaseDuration(durations: TimerDurations, phase: TimerPhase) {
-  return durations[phase] * 60;
+  return durations[phase];
 }
 
 export function useTimer(
@@ -21,7 +21,7 @@ export function useTimer(
   onComplete?: (phase: TimerPhase) => void,
 ) {
   const [phase, setPhase] = useState<TimerPhase>("focus");
-  const [remaining, setRemaining] = useState(durations.focus * 60);
+  const [remaining, setRemaining] = useState(durations.focus);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const durationsRef = useRef(durations);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { DEFAULT_DURATIONS, type TimerDurations, MIN_MINUTES, MAX_MINUTES } from "./useTimer";
+import { DEFAULT_DURATIONS, type TimerDurations, MIN_SECONDS, MAX_SECONDS } from "./useTimer";
 import type { BackgroundVariant } from "@/components/Background";
 
 const KEY_DURATIONS = "focus-space:durations";
@@ -8,6 +8,7 @@ const KEY_BG_VARIANT = "focus-space:bg-variant";
 const KEY_BG_IMAGE = "focus-space:bg-image";
 const KEY_BG_BLUR = "focus-space:bg-blur";
 const KEY_TIMER_RING_STYLE = "focus-space:timer-ring-style";
+const KEY_TIMER_RING_COLOR = "focus-space:timer-ring-color";
 const KEY_TIMER_RING_WIDTH = "focus-space:timer-ring-width";
 const KEY_TIMER_FONT = "focus-space:timer-font";
 const KEY_TIMER_FONT_SIZE = "focus-space:timer-font-size";
@@ -43,16 +44,30 @@ export const TIMER_RING_STYLES: TimerRingStyle[] = [
   { id: "ice", name: "Ice", color: "oklch(0.9 0.06 230)", glow: "oklch(0.9 0.06 230)" },
 ];
 
-export const TIMER_FONT_STYLES: TimerFontStyle[] = [
-  { id: "display", name: "Display", className: "font-display" },
-  { id: "system", name: "System", className: "font-sans font-semibold" },
-  { id: "mono", name: "Mono", className: "font-mono font-semibold" },
-  { id: "serif", name: "Serif", className: "font-serif" },
+const TIMER_FONT_STYLE_DEFINITIONS: ReadonlyArray<[
+  id: string,
+  name: string,
+  className: string
+]> = [
+  ["display", "Display", "font-display"],
+  ["system", "System", "font-sans font-semibold"],
+  ["serif", "Serif", "font-serif"],
+  ["mono", "Mono", "font-mono font-semibold"],
+  ["sans-bold", "Sans Bold", "font-sans font-black"],
+  ["sans-italic", "Sans Italic", "font-sans italic font-semibold"],
+  ["fantasy", "Impact", "font-fantasy font-black"],
+  ["rounded", "Rounded", "font-rounded font-semibold"],
+  ["technical", "Technical", "font-technical text-[0.8rem]"],
+  ["gothic", "Gothic", "font-gothic text-[0.8rem]"],
 ];
 
+export const TIMER_FONT_STYLES: TimerFontStyle[] = TIMER_FONT_STYLE_DEFINITIONS.map(
+  ([id, name, className]) => ({ id, name, className }),
+);
+
 function clamp(n: number) {
-  if (Number.isNaN(n)) return MIN_MINUTES;
-  return Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, Math.round(n)));
+  if (Number.isNaN(n)) return MIN_SECONDS;
+  return Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Math.round(n)));
 }
 
 function clampBlur(n: number) {
@@ -70,7 +85,16 @@ function clampTimerFontSize(n: number) {
   return Math.min(MAX_TIMER_FONT_SIZE, Math.max(MIN_TIMER_FONT_SIZE, Math.round(n)));
 }
 
-function getTimerRingStyle(id: string | null) {
+function getTimerRingStyle(id: string | null, customColor?: string) {
+  if (id === "custom") {
+    const color = customColor ?? TIMER_RING_STYLES[0].color;
+    return {
+      id: "custom",
+      name: "Custom",
+      color,
+      glow: color,
+    };
+  }
   return TIMER_RING_STYLES.find((style) => style.id === id) ?? TIMER_RING_STYLES[0];
 }
 
@@ -95,6 +119,7 @@ export function useSettings() {
   const [bgImage, setBgImageState] = useState<string | null>(null);
   const [bgBlur, setBgBlurState] = useState<number>(DEFAULT_BLUR);
   const [timerRingStyle, setTimerRingStyleState] = useState<TimerRingStyle>(TIMER_RING_STYLES[0]);
+  const [customTimerRingColor, setCustomTimerRingColorState] = useState<string>(TIMER_RING_STYLES[0].color);
   const [timerRingWidth, setTimerRingWidthState] = useState<number>(DEFAULT_TIMER_RING_WIDTH);
   const [timerFontStyle, setTimerFontStyleState] = useState<TimerFontStyle>(TIMER_FONT_STYLES[0]);
   const [timerFontSize, setTimerFontSizeState] = useState<number>(DEFAULT_TIMER_FONT_SIZE);
@@ -114,8 +139,11 @@ export function useSettings() {
     if (img) setBgImageState(img);
     const blurRaw = typeof window !== "undefined" ? localStorage.getItem(KEY_BG_BLUR) : null;
     if (blurRaw != null) setBgBlurState(clampBlur(parseInt(blurRaw, 10)));
+    const ringColorRaw = typeof window !== "undefined" ? localStorage.getItem(KEY_TIMER_RING_COLOR) : null;
+    const ringColor = ringColorRaw ?? TIMER_RING_STYLES[0].color;
+    setCustomTimerRingColorState(ringColor);
     const ringStyleId = typeof window !== "undefined" ? localStorage.getItem(KEY_TIMER_RING_STYLE) : null;
-    setTimerRingStyleState(getTimerRingStyle(ringStyleId));
+    setTimerRingStyleState(getTimerRingStyle(ringStyleId, ringColor));
     const ringWidthRaw = typeof window !== "undefined" ? localStorage.getItem(KEY_TIMER_RING_WIDTH) : null;
     if (ringWidthRaw != null) setTimerRingWidthState(clampTimerRingWidth(parseInt(ringWidthRaw, 10)));
     const fontStyleId = typeof window !== "undefined" ? localStorage.getItem(KEY_TIMER_FONT) : null;
@@ -160,11 +188,21 @@ export function useSettings() {
     try { localStorage.setItem(KEY_BG_BLUR, String(c)); } catch {}
   }, []);
 
+  const setCustomTimerRingColor = useCallback((color: string) => {
+    const nextColor = color || TIMER_RING_STYLES[0].color;
+    setCustomTimerRingColorState(nextColor);
+    try { localStorage.setItem(KEY_TIMER_RING_COLOR, nextColor); } catch {}
+
+    if (timerRingStyle.id === "custom") {
+      setTimerRingStyleState({ id: "custom", name: "Custom", color: nextColor, glow: nextColor });
+    }
+  }, [timerRingStyle.id]);
+
   const setTimerRingStyle = useCallback((id: string) => {
-    const nextStyle = getTimerRingStyle(id);
+    const nextStyle = getTimerRingStyle(id, customTimerRingColor);
     setTimerRingStyleState(nextStyle);
     try { localStorage.setItem(KEY_TIMER_RING_STYLE, nextStyle.id); } catch {}
-  }, []);
+  }, [customTimerRingColor]);
 
   const setTimerRingWidth = useCallback((n: number) => {
     const c = clampTimerRingWidth(n);
@@ -198,6 +236,8 @@ export function useSettings() {
     setBgBlur,
     timerRingStyle,
     setTimerRingStyle,
+    customTimerRingColor,
+    setCustomTimerRingColor,
     timerRingWidth,
     setTimerRingWidth,
     timerFontStyle,
