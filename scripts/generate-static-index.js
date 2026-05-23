@@ -28,7 +28,7 @@ async function main() {
   const manifestRaw = await import('fs').then(fs => fs.promises.readFile(manifestPath, 'utf8'));
   const manifest = JSON.parse(manifestRaw);
 
-  // Find start script entry
+  // Find start script entry from server manifest (fallback)
   let startFile = manifest['src/start.ts']?.file || manifest['src/start.tsx']?.file;
   if (!startFile) {
     for (const key of Object.keys(manifest)) {
@@ -38,6 +38,20 @@ async function main() {
         break;
       }
     }
+  }
+
+  // Prefer a client-side entry: pick largest index-*.js from dist/client/assets if present
+  try {
+    const fs = await import('node:fs');
+    const clientFiles = await fs.promises.readdir(clientAssetsDir);
+    const indexFiles = clientFiles.filter(f => /^index-[\w\-]+\.js$/.test(f));
+    if (indexFiles.length > 0) {
+      const stats = await Promise.all(indexFiles.map(async f => ({ f, s: await fs.promises.stat(resolve(clientAssetsDir, f)) })));
+      stats.sort((a, b) => b.s.size - a.s.size);
+      startFile = `assets/${stats[0].f}`;
+    }
+  } catch (err) {
+    // ignore and keep server-detected startFile
   }
 
   // Find styles file
@@ -72,7 +86,7 @@ async function main() {
   }
 
   // Normalize asset file names (strip leading "assets/" if present)
-  const normalize = (p) => p ? p.replace(/^assets[\/]/, '') : p;
+  const normalize = (p) => p ? p.replace(/^assets[\\/]/, '') : p;
   const startFileName = normalize(startFile);
   const styleFileName = normalize(styleFile);
 
