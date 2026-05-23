@@ -9,18 +9,24 @@ function safeResolve(...p) {
 const normalizeAssetPath = (p) =>
   p ? p.replace(/^\/?assets[\\/]/, '').replace(/^assets[\\/]/, '') : p;
 
-async function parseStartManifest(clientAssetsDir) {
+async function findStartManifestFile(...assetDirs) {
   const fs = await import('node:fs');
-  const clientFiles = await fs.promises.readdir(clientAssetsDir);
-  const manifestFiles = clientFiles.filter(
-    (f) => f.startsWith('_tanstack-start-manifest_v-') && f.endsWith('.js'),
-  );
-  if (manifestFiles.length === 0) return null;
+  for (const dir of assetDirs) {
+    if (!existsSync(dir)) continue;
+    const files = await fs.promises.readdir(dir);
+    const manifestFile = files.find(
+      (f) => f.startsWith('_tanstack-start-manifest_v-') && f.endsWith('.js'),
+    );
+    if (manifestFile) return resolve(dir, manifestFile);
+  }
+  return null;
+}
 
-  const manifestContent = await fs.promises.readFile(
-    resolve(clientAssetsDir, manifestFiles[0]),
-    'utf8',
-  );
+async function parseStartManifest(...assetDirs) {
+  const manifestPath = await findStartManifestFile(...assetDirs);
+  if (!manifestPath) return null;
+
+  const manifestContent = await readFile(manifestPath, 'utf8');
   const functionMatch = manifestContent.match(
     /(?:export\s+)?const tsrStartManifest = \(\) => \(([\s\S]+?)\);/,
   );
@@ -52,29 +58,33 @@ async function assertBrowserBundle(assetPath) {
 
 async function main() {
   const clientAssetsDir = safeResolve('dist', 'client', 'assets');
+  const serverAssetsDir = safeResolve('dist', 'server', 'assets');
 
   if (!existsSync(clientAssetsDir)) {
-    console.log('No client assets dir at', clientAssetsDir);
-    return;
+    console.error('No client assets dir at', clientAssetsDir);
+    process.exit(1);
   }
 
   await mkdir(clientAssetsDir, { recursive: true });
 
-  const routerManifestData = (await parseStartManifest(clientAssetsDir)) ?? {
-    routes: {},
-  };
+  const routerManifestData =
+    (await parseStartManifest(clientAssetsDir, serverAssetsDir)) ?? {
+      routes: {},
+    };
 
   const clientEntry = routerManifestData.clientEntry;
   if (!clientEntry) {
-    console.log('No clientEntry in TanStack start manifest; aborting index generation.');
-    return;
+    console.error(
+      'No clientEntry in TanStack start manifest; aborting index generation.',
+    );
+    process.exit(1);
   }
 
   const startFileName = normalizeAssetPath(clientEntry);
   const startAssetPath = resolve(clientAssetsDir, startFileName);
   if (!existsSync(startAssetPath)) {
-    console.log('Client entry asset missing:', startAssetPath);
-    return;
+    console.error('Client entry asset missing:', startAssetPath);
+    process.exit(1);
   }
 
   await assertBrowserBundle(startAssetPath);
