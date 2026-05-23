@@ -64,21 +64,23 @@ export function Timer({
             cy={VB / 2}
             r={r}
             fill="none"
-            stroke="oklch(1 0 0 / 0.08)"
             strokeWidth={stroke}
+            style={{ stroke: "oklch(1 0 0 / 0.08)" }}
           />
           <circle
             cx={VB / 2}
             cy={VB / 2}
             r={r}
             fill="none"
-            stroke={ringStyle.color}
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - progress)}
             className="transition-[stroke-dashoffset] duration-700 ease-out"
-            style={{ filter: `drop-shadow(0 0 ${ringWidth * 4}px ${ringStyle.glow})` }}
+            style={{
+              stroke: ringStyle.color,
+              filter: `drop-shadow(0 0 ${ringWidth * 4}px ${ringStyle.glow})`,
+            }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">

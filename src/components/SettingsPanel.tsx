@@ -28,6 +28,7 @@ import {
   TIMER_FONT_STYLES,
   TIMER_RING_STYLES,
 } from "@/hooks/useSettings";
+import { toColorInputValue } from "@/lib/color";
 import type { translations } from "@/lib/i18n";
 
 interface Props {
@@ -280,7 +281,7 @@ export function SettingsPanel({
                 <input
                   ref={colorInputRef}
                   type="color"
-                  value={customTimerRingColor}
+                  value={toColorInputValue(customTimerRingColor)}
                   onChange={(e) => setCustomTimerRingColor(e.target.value)}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   aria-label={copy.customColor}
