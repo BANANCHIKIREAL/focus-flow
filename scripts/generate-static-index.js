@@ -71,17 +71,22 @@ async function main() {
     return;
   }
 
+  // Normalize asset file names (strip leading "assets/" if present)
+  const normalize = (p) => p ? p.replace(/^assets[\/]/, '') : p;
+  const startFileName = normalize(startFile);
+  const styleFileName = normalize(styleFile);
+
   const indexHtml = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Focus Flow</title>
-    ${styleFile ? `<link rel="stylesheet" href="/${styleFile}" />` : ''}
+    ${styleFileName ? `<link rel="stylesheet" href="/assets/${styleFileName}" />` : ''}
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/assets/${startFile}"></script>
+    <script type="module" src="/assets/${startFileName}"></script>
   </body>
 </html>`;
 
