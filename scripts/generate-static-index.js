@@ -1,4 +1,4 @@
-import { mkdir, cp, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -6,118 +6,80 @@ function safeResolve(...p) {
   return resolve(process.cwd(), ...p);
 }
 
+const normalizeAssetPath = (p) =>
+  p ? p.replace(/^\/?assets[\\/]/, '').replace(/^assets[\\/]/, '') : p;
+
+async function parseStartManifest(clientAssetsDir) {
+  const fs = await import('node:fs');
+  const clientFiles = await fs.promises.readdir(clientAssetsDir);
+  const manifestFiles = clientFiles.filter(
+    (f) => f.startsWith('_tanstack-start-manifest_v-') && f.endsWith('.js'),
+  );
+  if (manifestFiles.length === 0) return null;
+
+  const manifestContent = await fs.promises.readFile(
+    resolve(clientAssetsDir, manifestFiles[0]),
+    'utf8',
+  );
+  const functionMatch = manifestContent.match(
+    /(?:export\s+)?const tsrStartManifest = \(\) => \(([\s\S]+?)\);/,
+  );
+  if (!functionMatch) return null;
+
+  try {
+    return new Function('return ' + functionMatch[1])();
+  } catch (e) {
+    console.warn('Could not parse TanStack start manifest:', e.message);
+    return null;
+  }
+}
+
+async function findStyleFile(clientAssetsDir) {
+  const fs = await import('node:fs');
+  const clientFiles = await fs.promises.readdir(clientAssetsDir);
+  const css = clientFiles.find((f) => /^styles[-].*\.css$/.test(f));
+  return css ? normalizeAssetPath(css) : null;
+}
+
+async function assertBrowserBundle(assetPath) {
+  const head = (await readFile(assetPath, 'utf8')).slice(0, 4096);
+  if (/from\s+["']node:/.test(head) || /import\s+["']node:/.test(head)) {
+    throw new Error(
+      `Refusing to use server bundle as browser entry: ${assetPath}`,
+    );
+  }
+}
+
 async function main() {
-  const serverAssetsDir = safeResolve('dist', 'server', 'assets');
   const clientAssetsDir = safeResolve('dist', 'client', 'assets');
-  const manifestPath = safeResolve('dist', 'server', '.vite', 'manifest.json');
 
-  if (!existsSync(manifestPath)) {
-    console.log('No manifest found at', manifestPath);
+  if (!existsSync(clientAssetsDir)) {
+    console.log('No client assets dir at', clientAssetsDir);
     return;
   }
 
-  // Ensure client assets dir exists and copy server assets there
   await mkdir(clientAssetsDir, { recursive: true });
-  if (existsSync(serverAssetsDir)) {
-    await cp(serverAssetsDir, clientAssetsDir, { recursive: true });
-    console.log('Copied server assets to client assets');
-  } else {
-    console.log('No server assets to copy');
-  }
 
-  const manifestRaw = await import('fs').then(fs => fs.promises.readFile(manifestPath, 'utf8'));
-  const manifest = JSON.parse(manifestRaw);
+  const routerManifestData = (await parseStartManifest(clientAssetsDir)) ?? {
+    routes: {},
+  };
 
-  // Find start script entry from server manifest (fallback)
-  let startFile = manifest['src/start.ts']?.file || manifest['src/start.tsx']?.file;
-  if (!startFile) {
-    for (const key of Object.keys(manifest)) {
-      const val = manifest[key];
-      if (val && (val.name === 'start' || key.endsWith('/src/start.ts') || key === 'src/start.ts')) {
-        startFile = val.file;
-        break;
-      }
-    }
-  }
-
-  // Prefer a client-side entry: pick newest/most recently modified index-*.js from dist/client/assets if present
-  let clientEntryChosen = false;
-  try {
-    const fs = await import('node:fs');
-    const clientFiles = await fs.promises.readdir(clientAssetsDir);
-    const indexFiles = clientFiles.filter(f => /^index-[\w\-]+\.js$/.test(f));
-    if (indexFiles.length > 0) {
-      const stats = await Promise.all(indexFiles.map(async f => ({ f, s: await fs.promises.stat(resolve(clientAssetsDir, f)) })));
-      // Sort by modification time (newest first)
-      stats.sort((a, b) => (b.s.mtimeMs || 0) - (a.s.mtimeMs || 0));
-      startFile = `assets/${stats[0].f}`;
-      clientEntryChosen = true;
-    }
-  } catch (err) {
-    // ignore and keep server-detected startFile
-  }
-
-  // Find styles file
-  let styleFile;
-  for (const key of Object.keys(manifest)) {
-    const val = manifest[key];
-    if (!val) continue;
-    if (val.src && typeof val.src === 'string' && val.src.endsWith('src/styles.css')) {
-      styleFile = val.file;
-      break;
-    }
-    if (val.assets && Array.isArray(val.assets)) {
-      const found = val.assets.find(a => a.includes('styles--'));
-      if (found) { styleFile = found; break; }
-    }
-  }
-
-  // Fallback: try to read existing client assets for styles
-  if (!styleFile) {
-    try {
-      const clientFiles = await import('node:fs').then(fs => fs.promises.readdir(clientAssetsDir));
-      const css = clientFiles.find(f => f.startsWith('styles-') || f.startsWith('styles--'));
-      if (css) styleFile = `assets/${css}`;
-    } catch (err) {
-      // ignore
-    }
-  }
-
-  // Find router manifest file and read its content
-  let routerManifestData = { routes: {} };
-  try {
-    const fs = await import('node:fs');
-    const clientFiles = await fs.promises.readdir(clientAssetsDir);
-    const manifestFiles = clientFiles.filter(f => f.startsWith('_tanstack-start-manifest_v-') && f.endsWith('.js'));
-    if (manifestFiles.length > 0) {
-      const manifestFile = manifestFiles[0];
-      const manifestContent = await fs.promises.readFile(resolve(clientAssetsDir, manifestFile), 'utf8');
-      // Extract the manifest from the function call
-      // Format: const tsrStartManifest = () => ({ routes: {...}, clientEntry: "..." });
-      const functionMatch = manifestContent.match(/const tsrStartManifest = \(\) => \(([\s\S]+?)\);/);
-      if (functionMatch) {
-        try {
-          // Use Function to safely evaluate the object literal
-          routerManifestData = new Function('return ' + functionMatch[1])();
-        } catch (e) {
-          console.warn('Could not parse router manifest:', e.message);
-          routerManifestData = { routes: {} };
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('Could not read router manifest:', err.message);
-  }
-  
-  if (!startFile) {
-    console.log('Could not find start entry in manifest; aborting index generation.');
+  const clientEntry = routerManifestData.clientEntry;
+  if (!clientEntry) {
+    console.log('No clientEntry in TanStack start manifest; aborting index generation.');
     return;
   }
 
-  // Normalize asset file names (strip leading "assets/" if present)
-  const normalize = (p) => p ? p.replace(/^assets[\\/]/, '') : p;
-  const startFileName = normalize(startFile);
-  const styleFileName = normalize(styleFile);
+  const startFileName = normalizeAssetPath(clientEntry);
+  const startAssetPath = resolve(clientAssetsDir, startFileName);
+  if (!existsSync(startAssetPath)) {
+    console.log('Client entry asset missing:', startAssetPath);
+    return;
+  }
+
+  await assertBrowserBundle(startAssetPath);
+
+  const styleFileName = await findStyleFile(clientAssetsDir);
   const routerManifestJson = JSON.stringify(routerManifestData);
 
   const indexHtml = `<!doctype html>
@@ -149,7 +111,10 @@ async function main() {
 
   const outPath = safeResolve('dist', 'client', 'index.html');
   await writeFile(outPath, indexHtml, 'utf8');
-  console.log('Generated', outPath);
+  console.log('Generated', outPath, 'with client entry', startFileName);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
