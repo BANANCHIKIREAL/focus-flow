@@ -5,6 +5,7 @@ export interface DailyTask {
   title: string;
   done: boolean;
   createdAt: number;
+  completedAt?: number;
 }
 
 const KEY_DAILY_TASKS = "focus-space:daily-tasks";
@@ -49,7 +50,15 @@ export function useDailyTasks() {
 
   const toggleTask = useCallback((id: string) => {
     setTasks((current) =>
-      current.map((task) => (task.id === id ? { ...task, done: !task.done } : task)),
+      current.map((task) => {
+        if (task.id !== id) return task;
+        const done = !task.done;
+        return {
+          ...task,
+          done,
+          completedAt: done ? Date.now() : undefined,
+        };
+      }),
     );
   }, []);
 

@@ -38,6 +38,8 @@ interface Props {
   setDurations: (d: Partial<TimerDurations>) => void;
   lunchEnabled: boolean;
   setLunchEnabled: (enabled: boolean) => void;
+  stopSoundsOnTimerEnd: boolean;
+  setStopSoundsOnTimerEnd: (enabled: boolean) => void;
   bgVariant: BackgroundVariant;
   setBgVariant: (v: BackgroundVariant) => void;
   bgImage: string | null;
@@ -73,6 +75,8 @@ export function SettingsPanel({
   setDurations,
   lunchEnabled,
   setLunchEnabled,
+  stopSoundsOnTimerEnd,
+  setStopSoundsOnTimerEnd,
   bgVariant,
   setBgVariant,
   bgImage,
@@ -184,6 +188,21 @@ export function SettingsPanel({
                 onChange={(v) => setDurations({ lunch: v })}
               />
             )}
+            <label className="flex items-center justify-between gap-3 rounded-2xl glass px-4 py-3">
+              <span>
+                <span className="block text-sm">Stop sounds when timer ends</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Ambient music will play only while the timer is running.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={stopSoundsOnTimerEnd}
+                onChange={(e) => setStopSoundsOnTimerEnd(e.target.checked)}
+                className="h-5 w-5 accent-primary cursor-pointer"
+                aria-label="Stop sounds when timer ends"
+              />
+            </label>
             <button
               onClick={() => setDurations(DEFAULT_DURATIONS)}
               className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"

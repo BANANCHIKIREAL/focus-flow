@@ -56,6 +56,8 @@ function FocusSpace() {
     setTimerFontStyle,
     timerFontSize,
     setTimerFontSize,
+    stopSoundsOnTimerEnd,
+    setStopSoundsOnTimerEnd,
   } = useSettings();
   const copy = translations.en;
   const { tracks, toggle, setVolume, stopAll } = useAudioMixer();
@@ -78,7 +80,8 @@ function FocusSpace() {
   const completeTimer = useCallback(() => {
     playFinishSound();
     notifyTimerComplete();
-  }, [notifyTimerComplete, playFinishSound]);
+    if (stopSoundsOnTimerEnd) stopAll();
+  }, [notifyTimerComplete, playFinishSound, stopAll, stopSoundsOnTimerEnd]);
 
   return (
     <div className="dark relative min-h-screen w-full flex flex-col text-foreground">
@@ -148,6 +151,8 @@ function FocusSpace() {
         setDurations={setDurations}
         lunchEnabled={lunchEnabled}
         setLunchEnabled={setLunchEnabled}
+        stopSoundsOnTimerEnd={stopSoundsOnTimerEnd}
+        setStopSoundsOnTimerEnd={setStopSoundsOnTimerEnd}
         bgVariant={bgVariant}
         setBgVariant={setBgVariant}
         bgImage={bgImage}
