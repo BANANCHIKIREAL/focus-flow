@@ -12,6 +12,7 @@ const KEY_TIMER_RING_COLOR = "focus-space:timer-ring-color";
 const KEY_TIMER_RING_WIDTH = "focus-space:timer-ring-width";
 const KEY_TIMER_FONT = "focus-space:timer-font";
 const KEY_TIMER_FONT_SIZE = "focus-space:timer-font-size";
+const KEY_STOP_SOUNDS_ON_TIMER_END = "focus-space:stop-sounds-on-timer-end";
 
 export const MIN_BLUR = 0;
 export const MAX_BLUR = 40;
@@ -123,6 +124,7 @@ export function useSettings() {
   const [timerRingWidth, setTimerRingWidthState] = useState<number>(DEFAULT_TIMER_RING_WIDTH);
   const [timerFontStyle, setTimerFontStyleState] = useState<TimerFontStyle>(TIMER_FONT_STYLES[0]);
   const [timerFontSize, setTimerFontSizeState] = useState<number>(DEFAULT_TIMER_FONT_SIZE);
+  const [stopSoundsOnTimerEnd, setStopSoundsOnTimerEndState] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -150,6 +152,8 @@ export function useSettings() {
     setTimerFontStyleState(getTimerFontStyle(fontStyleId));
     const fontSizeRaw = typeof window !== "undefined" ? localStorage.getItem(KEY_TIMER_FONT_SIZE) : null;
     if (fontSizeRaw != null) setTimerFontSizeState(clampTimerFontSize(parseInt(fontSizeRaw, 10)));
+    const stopSoundsRaw = typeof window !== "undefined" ? localStorage.getItem(KEY_STOP_SOUNDS_ON_TIMER_END) : null;
+    setStopSoundsOnTimerEndState(stopSoundsRaw === "true");
     setHydrated(true);
   }, []);
 
@@ -222,6 +226,11 @@ export function useSettings() {
     try { localStorage.setItem(KEY_TIMER_FONT_SIZE, String(c)); } catch {}
   }, []);
 
+  const setStopSoundsOnTimerEnd = useCallback((enabled: boolean) => {
+    setStopSoundsOnTimerEndState(enabled);
+    try { localStorage.setItem(KEY_STOP_SOUNDS_ON_TIMER_END, String(enabled)); } catch {}
+  }, []);
+
   return {
     hydrated,
     durations,
@@ -244,5 +253,7 @@ export function useSettings() {
     setTimerFontStyle,
     timerFontSize,
     setTimerFontSize,
+    stopSoundsOnTimerEnd,
+    setStopSoundsOnTimerEnd,
   };
 }

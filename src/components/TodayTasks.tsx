@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import type { DailyTask } from "@/hooks/useDailyTasks";
 import type { translations } from "@/lib/i18n";
@@ -23,6 +23,12 @@ export function TodayTasks({
   copy,
 }: Props) {
   const [draft, setDraft] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,11 +90,18 @@ export function TodayTasks({
                 {task.done && <Check size={13} />}
               </button>
               <div
-                className={`min-w-0 flex-1 text-sm leading-snug ${
-                  task.done ? "text-muted-foreground line-through" : "text-foreground"
-                }`}
+                className="min-w-0 flex-1"
               >
-                {task.title}
+                <div
+                  className={`text-sm leading-snug ${
+                    task.done ? "text-muted-foreground line-through" : "text-foreground"
+                  }`}
+                >
+                  {task.title}
+                </div>
+                <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+                  {formatTaskTime(task, now)}
+                </div>
               </div>
               <button
                 onClick={() => onRemove(task.id)}
@@ -112,4 +125,18 @@ export function TodayTasks({
       )}
     </section>
   );
+}
+
+function formatTaskTime(task: DailyTask, now: number) {
+  const end = task.completedAt ?? now;
+  const elapsed = Math.max(0, Math.floor((end - task.createdAt) / 1000));
+  const hours = Math.floor(elapsed / 3600);
+  const minutes = Math.floor((elapsed % 3600) / 60);
+  const seconds = elapsed % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
